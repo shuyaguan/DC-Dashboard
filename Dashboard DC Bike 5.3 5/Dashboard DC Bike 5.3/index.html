@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive dashboard for DC bicycle and micromobility usage patterns">
+    <title>DC Bicycle Usage Dashboard</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- D3.js for Visualizations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DC Bicycle & Micromobility Usage Dashboard</h1>
+            <div class="toolbar">
+                <div class="filter-group">
+                    <label for="neighborhood-filter">Neighborhood:</label>
+                    <select id="neighborhood-filter" aria-label="Filter by neighborhood">
+                        <option value="all" selected>All Neighborhoods</option>
+                        <!-- Will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="counter-type">Counter Type:</label>
+                    <select id="counter-type" aria-label="Filter by counter type">
+                        <option value="all" selected>All Counters</option>
+                        <option value="AUTO">Automatic</option>
+                        <option value="MANUAL">Manual</option>
+                    </select>
+                </div>
+                <div id="filter-info" class="filter-info" aria-live="polite"></div>           
+            </div>
+        </header>
+        
+        <main>
+            <div class="map-container fullscreen">
+                <div id="map" role="application" aria-label="Interactive map of DC bicycle data"></div>
+                <div class="map-legend" id="map-legend" aria-label="Map legend"></div>
+                <!-- Search bar will be added dynamically -->
+            </div>
+            
+            <!-- Mini stats panel -->
+            <div class="mini-stats-panel">
+                <div class="stats-toggle" aria-label="Toggle statistics panel" tabindex="0">📊</div>
+                <div class="stats-content">
+                    <h3>Summary</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label"> Count</div>
+                            <div class="stat-value" id="total-observed">Loading...</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Estimated Count</div>
+                            <div class="stat-value" id="total-estimated">Loading...</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Bike Lane Coverage</div>
+                            <div class="stat-value" id="bike-lane-coverage">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer>
+            <div class="footer-content">
+                <p>DC Bicycle & Micromobility Usage Dashboard | Data updated: February 2025</p>
+                <p>Created for demonstration purposes | <a href="#" id="about-link">About this project</a></p>
+            </div>
+        </footer>
+        
+        <!-- About modal dialog -->
+        <div class="modal-overlay" id="about-modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>About This Dashboard</h2>
+                    <button class="modal-close" aria-label="Close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>This interactive dashboard visualizes bicycle and micromobility usage patterns in Washington, DC. It combines observed counter data with predicted usage models to provide insights into cycling patterns across the city.</p>
+                    <h3>Data Sources</h3>
+                    <ul>
+                        <li>Bicycle counter data from DDOT</li>
+                        <li>Road network data from DC GIS</li>
+                        <li>Census demographics from US Census</li>
+                        <li>Predicted bicycle volumes from usage modeling</li>
+                    </ul>
+                    <h3>Features</h3>
+                    <ul>
+                        <li>Interactive map visualization</li>
+                        <li>Filtering by neighborhood and counter type</li>
+                        <li>Data export capabilities</li>
+                        <li>Detailed location analysis</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading and error states -->
+    <div class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading data...</div>
+    </div>
+    
+    <!-- Welcome Modal -->
+    <div id="welcome-overlay" class="welcome-overlay">
+        <div id="welcome-modal" class="welcome-modal">
+            <div class="welcome-header">
+                <h2>Welcome to DC Bicycle Dashboard</h2>
+                <p>Interactive Bicycle Usage Visualization for Washington DC</p>
+                <button class="welcome-close" id="welcome-close" aria-label="Close welcome modal">&times;</button>
+            </div>
+            <div class="welcome-content">
+                <div class="welcome-section">
+                    <h3>About This Project</h3>
+                    <p>This interactive dashboard visualizes bicycle and micromobility usage patterns across Washington DC's road network. It combines observed counter data with predictive modeling to provide estimates for areas without counters, creating a comprehensive view of cycling activity throughout the city.</p>
+                    <p>The dashboard is developed for the District Department of Transportation (DDOT) to help transportation planners understand when and where people are traveling by bicycle, which can inform better infrastructure planning decisions.</p>
+                </div>
+                
+                <div class="welcome-section">
+                    <h3>How to Use This Dashboard</h3>
+                    <div class="how-to-use">
+                        <div class="how-to-step">
+                            <div class="step-number">1</div>
+                            <h4>Explore the Map</h4>
+                            <p>The main map shows DC's road network with color-coded bicycle volume predictions. Click on any street segment to view detailed information.</p>
+                        </div>
+                        <div class="how-to-step">
+                            <div class="step-number">2</div>
+                            <h4>Filter the Data</h4>
+                            <p>Use the filter options at the top to focus on specific neighborhoods or counter types. The map will update to show only the selected data.</p>
+                        </div>
+                        <div class="how-to-step">
+                            <div class="step-number">3</div>
+                            <h4>View Data Layers</h4>
+                            <p>Toggle different data layers in the "Data Layers" panel to view additional information like Census data or Network Metrics.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="welcome-section">
+                    <h3>Key Features</h3>
+                    <div class="features-list">
+                        <div class="feature-item">
+                            <h4>Bike Volume Estimation</h4>
+                            <p>View estimated bicycle traffic across all road segments, even where no physical counters exist.</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4>Counter Points</h4>
+                            <p>See locations of actual bicycle counting stations and their observed data.</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4>Census Data Overlay</h4>
+                            <p>Explore relationships between demographics and bicycle usage patterns.</p>
+                        </div>
+                        <div class="feature-item">
+                            <h4>Network Metrics</h4>
+                            <p>Analyze the road network's connectivity and centrality characteristics.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="welcome-footer">
+                <div class="team-info">
+                    Developed by Practicum Team: Hao Zhu, Kuma Luo, Shuya Guan, Xian Lu Lee
+                </div>
+                <button class="start-btn" id="start-btn">Start Exploring</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- PapaParse (for CSV parsing) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Custom JS - loading order is important -->
+    <script src="js/data.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/map-visualization.js"></script>
+    <script src="js/main.js"></script>
+    
+    <script>
+        // Setup about modal
+        document.getElementById('about-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('about-modal').style.display = 'flex';
+        });
+        
+        document.querySelector('.modal-close').addEventListener('click', function() {
+            document.getElementById('about-modal').style.display = 'none';
+        });
+        
+        // Close modal when clicking outside
+        document.getElementById('about-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+        
+        // Keyboard accessibility
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('about-modal').style.display === 'flex') {
+                document.getElementById('about-modal').style.display = 'none';
+            }
+        });
+    </script>  
+</body>
+</html>
