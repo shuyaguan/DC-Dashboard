@@ -49,7 +49,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.mapModule) {
         window.mapModule.initMap();
         console.log("Map initialized");
+
+        startAutoPlay();
+
+        const hourSlider = document.getElementById('hourSlider');
+    if (hourSlider) {
+    hourSlider.addEventListener('input', function() {
+        const hour = parseInt(this.value, 10);
+        const currentHour = document.getElementById('currentHour');
+        if (currentHour) {
+            currentHour.textContent = `${hour}h`;
+        }
         
+        if (window.mapModule && window.mapModule.applyFakeHourEffect) {
+            window.mapModule.applyFakeHourEffect(hour);
+        }
+    });
+}
+
         // Then load data
         if (window.dataModule) {
             window.dataModule.initData()
@@ -255,6 +272,40 @@ function setupKeyboardShortcuts() {
             if (searchInput) searchInput.focus();
         }
     });
+}
+
+let autoPlayInterval = null;
+
+function startAutoPlay() {
+    const hourSlider = document.getElementById('hourSlider');
+    const currentHour = document.getElementById('currentHour');
+
+    if (!hourSlider || !currentHour) {
+        console.error('Hour slider or current hour display not found.');
+        return;
+    }
+
+    let hour = parseInt(hourSlider.value, 10) || 0;
+
+
+    if (autoPlayInterval) clearInterval(autoPlayInterval);
+
+    autoPlayInterval = setInterval(() => {
+        hour = (hour + 1) % 24; 
+        hourSlider.value = hour;
+        currentHour.textContent = `${hour}h`;
+
+        if (window.mapModule && window.mapModule.applyFakeHourEffect) {
+            window.mapModule.applyFakeHourEffect(hour);
+        }
+    }, 1000); 
+}
+
+function stopAutoPlay() {
+    if (autoPlayInterval) {
+        clearInterval(autoPlayInterval);
+        autoPlayInterval = null;
+    }
 }
 
 function showSpatial() {
